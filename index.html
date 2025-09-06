@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HTML Compiler</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <div class="left">
+      <div class="tabs" role="tablist">
+        <div class="tab active" data-file="index.html">index.html</div>
+        <div class="tab" data-file="styles.css">styles.css</div>
+        <div class="tab" data-file="script.js">script.js</div>
+      </div>
+      <div class="editor">
+        <textarea id="editor" spellcheck="false"></textarea>
+        <div class="controls">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="small hint">Edit files on the left • Live preview updates instantly on change</span>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button id="downloadAll">Download ZIP</button>
+            <button id="downloadFile">Download Current File</button>
+            <button id="reset">Reset Defaults</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="previewTop">
+        <div>Live Preview</div>
+        <div class="small">Right-click → Open frame in new tab to inspect</div>
+      </div>
+      <iframe id="preview" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+    </div>
+  </div>
+</body>
+<script src="script.js"></script>
+</html>
