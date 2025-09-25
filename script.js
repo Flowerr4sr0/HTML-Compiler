@@ -1,128 +1,121 @@
-const defaults = {
-      'index.html': `<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n    <title>Demo — Hello</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n  </head>\n  <body>\n    <p>Hello, World!</p>\n    <script src=\"script.js\" defer></script>\n  </body>\n</html>`,
+// script.js
 
-      'styles.css': `/* styles.css — edit me */\nbody{font-family:system-ui,Segoe UI,Roboto,Arial;background:#f7f9fc;color:#0b1220;padding:24px}\np{font-size:20px}`,
+const editor = document.getElementById("editor");
+const tabs = document.querySelectorAll(".tab");
+const preview = document.getElementById("preview");
+const resetBtn = document.getElementById("reset");
+const downloadFileBtn = document.getElementById("downloadFile");
+const downloadAllBtn = document.getElementById("downloadAll");
+const previewTitle = document.getElementById("previewPageTitle");
+const previewFavicon = document.getElementById("previewFavicon");
 
-      'script.js': `// script.js — edit me\nconsole.log('Hello from script.js')`
-    }
+const defaultFiles = {
+  "index.html": `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Hello Preview</title>
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f338.png">
+</head>
+<body>
+  <p>Hello, World!</p>
+</body>
+</html>`,
+  "styles.css": `body {
+  background: #fff;
+  color: #333;
+  font-family: system-ui, sans-serif;
+}
+p {
+  color: darkblue;
+  font-weight: bold;
+}`,
+  "script.js": `document.addEventListener("DOMContentLoaded", () => {
+  console.log("Hello from script.js!");
+});`
+};
 
-    const files = Object.assign({}, defaults)
-    let currentFile = 'index.html'
+let files = { ...defaultFiles };
+let currentFile = "index.html";
 
-    const editor = document.getElementById('editor')
-    const preview = document.getElementById('preview')
-    const tabs = document.querySelectorAll('.tab')
+// Load initial editor content
+editor.value = files[currentFile];
 
-    function loadFile(name){
-      currentFile = name
-      editor.value = files[name]
-      tabs.forEach(t=>t.classList.toggle('active', t.dataset.file===name))
-      editor.focus()
-      updatePreviewDebounced()
-    }
+// Update preview
+function updatePreview() {
+  const fullDoc = `
+<html>
+<head>
+<style>${files["styles.css"]}</style>
+<script>${files["script.js"]}<\/script>
+</head>
+<body>
+${files["index.html"]}
+</body>
+</html>
+  `;
+  preview.srcdoc = fullDoc;
 
-    // simple save on input
-    editor.addEventListener('input', ()=>{
-      files[currentFile] = editor.value
-      updatePreviewDebounced()
-    })
+  // Extract title & favicon
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(files["index.html"], "text/html");
 
-    tabs.forEach(t=>t.addEventListener('click', ()=>loadFile(t.dataset.file)))
+  const title = doc.querySelector("title");
+  previewTitle.textContent = title ? title.textContent : "Live Preview";
 
-    // Build preview by inlining styles and scripts so separate files still work in the srcdoc iframe
-    function buildPreviewSource(){
-      // Start with the index.html content if provided, otherwise create a basic shell
-      let src = files['index.html'] || ''
+  const icon = doc.querySelector("link[rel='icon']");
+  previewFavicon.src = icon ? icon.href : "https://via.placeholder.com/16";
+}
+updatePreview();
 
-      // Ensure we have a full html document — if user put only fragments, wrap them
-      if(!/<!doctype html>/i.test(src)){
-        src = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>` + src + `</body></html>`
-      }
+// Handle tab switching
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelector(".tab.active").classList.remove("active");
+    tab.classList.add("active");
 
-      // Inject styles.css into a <style> tag in head
-      const headClose = src.match(/<\/head>/i)
-      const styleTag = `<style>\n${files['styles.css']}\n</style>`
-      if(headClose){
-        src = src.replace(/<\/head>/i, styleTag + '\n</head>')
-      } else {
-        // if no head, prepend style to top
-        src = styleTag + '\n' + src
-      }
+    currentFile = tab.dataset.file;
+    editor.value = files[currentFile];
+  });
+});
 
-      // Inject script.js into body end
-      const bodyClose = src.match(/<\/body>/i)
-      const scriptTag = `<script>\n${files['script.js']}\n<\/script>`
-      if(bodyClose){
-        src = src.replace(/<\/body>/i, scriptTag + '\n</body>')
-      } else {
-        src = src + scriptTag
-      }
+// Update file on typing
+editor.addEventListener("input", () => {
+  files[currentFile] = editor.value;
+  updatePreview();
+});
 
-      return src
-    }
+// Reset defaults
+resetBtn.addEventListener("click", () => {
+  files = { ...defaultFiles };
+  editor.value = files[currentFile];
+  updatePreview();
+});
 
-    function updatePreview(){
-      const src = buildPreviewSource()
-      // Use srcdoc for immediate rendering
-      preview.srcdoc = src
-    }
+// Download current file
+downloadFileBtn.addEventListener("click", () => {
+  const blob = new Blob([files[currentFile]], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = currentFile;
+  a.click();
+});
 
-    // debounce helper
-    let debounceTimer = null
-    function updatePreviewDebounced(){
-      if(debounceTimer) clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(()=>{ updatePreview(); debounceTimer = null }, 120)
-    }
+// Download all files (fallback: individual downloads)
+downloadAllBtn.addEventListener("click", () => {
+  Object.keys(files).forEach(name => {
+    const blob = new Blob([files[name]], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+  });
+});
 
-    // Download helpers
-    function downloadText(filename, text){
-      const a = document.createElement('a')
-      const blob = new Blob([text], {type:'text/plain'})
-      a.href = URL.createObjectURL(blob)
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      setTimeout(()=>URL.revokeObjectURL(a.href), 5000)
-    }
-
-    document.getElementById('downloadFile').addEventListener('click', ()=>{
-      downloadText(currentFile, files[currentFile])
-    })
-
-    document.getElementById('reset').addEventListener('click', ()=>{
-      if(!confirm('Reset all files to defaults?')) return
-      Object.assign(files, defaults)
-      loadFile(currentFile)
-    })
-
-    // ZIP creation (uses JSZip if available) — fallback to individual downloads if not
-    document.getElementById('downloadAll').addEventListener('click', async ()=>{
-      // try to use JSZip if present
-      if(window.JSZip){
-        const zip = new JSZip()
-        Object.keys(files).forEach(k=>zip.file(k, files[k]))
-        const blob = await zip.generateAsync({type:'blob'})
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(blob); a.download = 'project.zip'; document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(()=>URL.revokeObjectURL(a.href), 5000)
-      } else {
-        // fallback: trigger three downloads
-        downloadText('index.html', files['index.html'])
-        downloadText('styles.css', files['styles.css'])
-        downloadText('script.js', files['script.js'])
-      }
-    })
-
-    // Initialize
-    loadFile('index.html')
-    // initial preview
-    updatePreview()
-
-    // keyboard shortcut: Ctrl/Cmd+S to download current file
-    window.addEventListener('keydown', (e)=>{
-      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){
-        e.preventDefault()
-        downloadText(currentFile, files[currentFile])
-      }
-    })
+// Keyboard shortcut: Ctrl/Cmd+S to download current file
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    downloadFileBtn.click();
+  }
+});
